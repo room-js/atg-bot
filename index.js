@@ -1,31 +1,24 @@
-import express from 'express';
-import transpiler from 'ascii-text-generator';
-import bodyParser from 'body-parser';
+const Botgram = require('botgram');
+const figlet = require('figlet');
 
-const app = express();
+const { TELEGRAM_BOT_TOKEN } = process.env;
 
-app.use(bodyParser.json());
+if (!TELEGRAM_BOT_TOKEN) {
+  console.error('Seems like you forgot to pass Telegram Bot Token. I can not proceed...');
+  process.exit(1);
+}
 
-app.get('/', (req, res) => {
-  res.send(`To get the result access "${req.get('host')}/generate" endpoint.`);
-});
+const bot = new Botgram(TELEGRAM_BOT_TOKEN);
 
-app.post('/generate', (req, res) => {
-  const {text, style} = req.body;
+function onMessage(msg, reply) {
+  figlet(msg.text, (err, data) => {
+    if (err) {
+      reply.text('An error occured. Probably text format is not correct.').then();
+      return;
+    }
+    const markdownResult = `${'```\n'}${data}${'\n```'}`;
+    reply.markdown(markdownResult).then();
+  });
+}
 
-  if (!text) {
-    res.json({text: 'Error: seems like text is empty...'});
-    return;
-  }
-
-  const inputText = text.replace(/\W+/g, '');
-
-  try {
-    const transpiledText = transpiler(inputText, style || "2");
-    res.json({text: transpiledText});
-  } catch(e) {
-    res.json({text: e});
-  }
-});
-
-app.listen(80);
+bot.text(onMessage);
